@@ -26,16 +26,21 @@ end
 function read_generation_data(area::String)
     df = CSV.read(
         joinpath(
-            @__DIR__, "Data", "Actual_generation_202001010000_202601010000_Hour_$(area).csv"
+            @__DIR__,
+            "Data",
+            "Actual_generation_202001010000_202601010000_Hour_$(area).csv",
         ),
         DataFrame;
-        delim=";",
-        groupmark=',',
-        decimal='.',
-        dateformat=dateformat"u d, yyyy HH:MM p",
-        types=Dict("Start date" => DateTime, "End date" => DateTime),
-        missingstring="-",
-        select=[
+        delim = ";",
+        groupmark = ',',
+        decimal = '.',
+        dateformat = dateformat"u d, yyyy HH:MM p",
+        types = Dict(
+            "Start date" => DateTime,
+            "End date" => DateTime,
+        ),
+        missingstring = "-",
+        select = [
             "Start date",
             "Wind offshore [MWh] Calculated resolutions",
             "Wind onshore [MWh] Calculated resolutions",
@@ -71,12 +76,14 @@ function read_demand_data(area::String)
             "Actual_consumption_202001010000_202601010000_Hour_$(area).csv",
         ),
         DataFrame;
-        delim=";",
-        groupmark=',',
-        decimal='.',
-        dateformat=dateformat"u d, yyyy HH:MM p",
-        types=Dict("Start date" => DateTime, "End date" => DateTime),
-        select=["Start date", "grid load [MWh] Calculated resolutions"],
+        delim = ";",
+        groupmark = ',',
+        decimal = '.',
+        dateformat = dateformat"u d, yyyy HH:MM p",
+        types = Dict(
+            "Start date" => DateTime,
+            "End date" => DateTime,        ),
+        select = ["Start date", "grid load [MWh] Calculated resolutions"],
     )
     rename!(n -> Symbol(replace(String(n), r"\s+Calculated resolutions$" => "")), df)
     df[!, :Area] .= area
@@ -95,16 +102,16 @@ function read_price_data()
     df = CSV.read(
         joinpath(@__DIR__, "Data", "Day-ahead_prices_202001010000_202601010000_Hour.csv"),
         DataFrame;
-        delim=";",
-        groupmark=',',
-        decimal='.',
-        dateformat=dateformat"u d, yyyy HH:MM p",
-        types=Dict(
+        delim = ";",
+        groupmark = ',',
+        decimal = '.',
+        dateformat = dateformat"u d, yyyy HH:MM p",
+        types = Dict(
             "Start date" => DateTime,
             "End date" => DateTime,
             "Germany/Luxembourg [€/MWh] Calculated resolutions" => Float64,
         ),
-        select=["Start date", "Germany/Luxembourg [€/MWh] Calculated resolutions"],
+        select = ["Start date", "Germany/Luxembourg [€/MWh] Calculated resolutions"],
     )
     rename!(n -> Symbol(replace(String(n), r"\s+Calculated resolutions$" => "")), df)
     foreach(c -> replace!(c, missing => 0), eachcol(df))
@@ -122,18 +129,18 @@ function read_capacity_data(area::String)
             "Installed_generation_capacity_202001010000_202601010000_Year_$(area).csv",
         ),
         DataFrame;
-        delim=";",
-        groupmark=',',
-        decimal='.',
-        dateformat=dateformat"u d, yyyy HH:MM p",
-        types=Dict(
+        delim = ";",
+        groupmark = ',',
+        decimal = '.',
+        dateformat = dateformat"u d, yyyy HH:MM p",
+        types = Dict(
             "Start date" => DateTime,
             "End date" => DateTime,
             # "Wind offshore [MW] Original resolutions" => Float64,
             # "Wind onshore [MW] Original resolutions" => Float64,
             # "Photovoltaics [MW] Original resolutions" => Float64,
         ),
-        select=[
+        select = [
             "Start date",
             "Wind offshore [MW] Original resolutions",
             "Wind onshore [MW] Original resolutions",
@@ -166,10 +173,10 @@ function calculate_availabilities(df)
     end
 end
 
-function generate_inverse_demand_parameters(data; price_elasticity=-0.2)
+function generate_inverse_demand_parameters(data; price_elasticity = -0.2)
     data.a =
         replace(v -> v <= 0 ? 1 : v, data[!, "Germany/Luxembourg [€/MWh]"]) .*
-        (1 - 1 / price_elasticity)
+        (1-1/price_elasticity)
     data.b =
         replace(v -> v <= 0 ? 1 : v, data[!, "Germany/Luxembourg [€/MWh]"]) ./
         (price_elasticity .* data[!, "grid load [MWh]"])
@@ -184,10 +191,10 @@ function combine_data()
     data = leftjoin(
         generation_data,
         demand_data,
-        on=["Start date", :Month, :Day, :Area, :Year, :hour_of_year],
+        on = ["Start date", :Month, :Day, :Area, :Year, :hour_of_year],
     )
-    leftjoin!(data, price_data, on=["Start date", :Month, :Day, :Year, :hour_of_year])
-    leftjoin!(data, capacity_data[!, Not(["Start date"])], on=[:Area, :Year])
+    leftjoin!(data, price_data, on = ["Start date", :Month, :Day, :Year, :hour_of_year])
+    leftjoin!(data, capacity_data[!, Not(["Start date"])], on = [:Area, :Year])
     select!(
         data,
         [
@@ -214,14 +221,15 @@ function combine_data()
 end
 
 function create_data_inspection(;
-    plotcols=[
+    plotcols = [
         "Wind offshore availability",
         "Wind onshore availability",
         "Photovoltaics availability",
     ],
-    areas=["50Hertz", "Amprion", "TenneT", "TransnetBW"],
-    plotgrouping=[:Year, :Month, :Area],
+    areas = ["50Hertz", "Amprion", "TenneT", "TransnetBW"],
+    plotgrouping = [:Year, :Month, :Area],
 )
+
     @load joinpath(@__DIR__, "results", "data.jld2") data
     years = sort!(unique(data[!, :Year]))
     months = sort!(unique(data[!, :Month]))
@@ -232,12 +240,12 @@ function create_data_inspection(;
         group_map[k...] = g
     end
 
-    fig = Figure(size=(1100, 700))
-    axs = [Axis(fig[i + 1, 1:3], title=v) for (i, v) in enumerate(plotcols)]
+    fig = Figure(size = (1100, 700))
+    axs = [Axis(fig[i+1, 1:3], title = v) for (i, v) in enumerate(plotcols)]
 
-    dd_year = Menu(fig[1, 1], options=years)
-    dd_month = Menu(fig[1, 2], options=months)
-    dd_area = Menu(fig[1, 3], options=areas)
+    dd_year = Menu(fig[1, 1], options = years)
+    dd_month = Menu(fig[1, 2], options = months)
+    dd_area = Menu(fig[1, 3], options = areas)
 
     subdf = @lift begin
         y = years[$(dd_year.i_selected)]
@@ -259,4 +267,5 @@ function create_data_inspection(;
     end
 
     display(fig)
+
 end
