@@ -1,0 +1,18 @@
+# macOS
+.DS_Store
+
+# Julia
+*.jl.cov
+*.jl.*.cov
+*.jl.mem
+/docs/build/
+
+# Julia compiled cache (keep Manifest.toml for reproducibility as an application)
+# Manifest.toml
+
+# Runtime outputs
+results/
+*.log
+
+# JLD2 results (generated at runtime, keep test_data/ as reference)
+results/*.jld2

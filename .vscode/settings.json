@@ -1,0 +1,17 @@
+{
+    "julia.environmentPath": "./",
+    "[julia]": {
+        "editor.defaultFormatter": "julialang.language-julia",
+        "editor.formatOnSave": true
+    },
+    "julia.format.calls": true,
+    "julia.format.comments": true,
+    "julia.format.curly": true,
+    "julia.format.docs": true,
+    "julia.format.indent": 4,
+    "julia.format.indents": true,
+    "julia.format.iterOps": true,
+    "julia.format.kwarg": "none",
+    "julia.format.ops": true,
+    "julia.format.tuples": true
+}
