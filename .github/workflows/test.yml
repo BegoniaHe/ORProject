@@ -1,0 +1,77 @@
+name: Julia CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  JULIA_VERSION: "1.11.4"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+
+    steps:
+      # ─── 1. Checkout (with Git LFS for project_handout.zip) ─────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      # ─── 2. Install Julia 1.11.4 ─────────────────────────────────────────────
+      - name: Setup Julia ${{ env.JULIA_VERSION }}
+        uses: julia-actions/setup-julia@v2
+        with:
+          version: ${{ env.JULIA_VERSION }}
+
+      # ─── 3. Virtual display (required for GLMakie on headless runner) ────────
+      - name: Setup virtual display for GLMakie
+        run: |
+          sudo apt-get install -y xvfb libglu1-mesa libgl1-mesa-dri mesa-utils
+          Xvfb :99 -screen 0 1920x1080x24 &
+          echo "DISPLAY=:99" >> $GITHUB_ENV
+          echo "LIBGL_ALWAYS_SOFTWARE=1" >> $GITHUB_ENV
+
+      # ─── 4. Gurobi license (store full .lic content as secret GUROBI_LICENSE) ─
+      - name: Setup Gurobi license
+        run: |
+          mkdir -p "$HOME/gurobi"
+          printf '%s' "$GUROBI_LICENSE" > "$HOME/gurobi/gurobi.lic"
+          echo "GRB_LICENSE_FILE=$HOME/gurobi/gurobi.lic" >> $GITHUB_ENV
+        env:
+          GUROBI_LICENSE: ${{ secrets.GUROBI_LICENSE }}
+
+      # ─── 5. Extract project_handout.zip (zip root is project_handout/) ───────
+      - name: Extract project handout
+        run: |
+          unzip test/project_handout.zip
+          # The zip already has project_handout/ as its root directory,
+          # so this creates ./project_handout/ in the repo root.
+          ls project_handout/
+
+      # ─── 6. Replace template src.jl with our solution ────────────────────────
+      - name: Install solution (cp src.jl → project_handout/src.jl)
+        run: cp src.jl project_handout/src.jl
+
+      # ─── 7. Cache Julia package depot ────────────────────────────────────────
+      - name: Cache Julia packages
+        uses: julia-actions/cache@v2
+
+      # ─── 8. Instantiate the handout environment ──────────────────────────────
+      - name: Instantiate Julia environment
+        working-directory: project_handout
+        run: julia --project=. -e 'using Pkg; Pkg.instantiate()'
+
+      # ─── 9. Run optimization models and save results ─────────────────────────
+      - name: Generate results (run.jl)
+        working-directory: project_handout
+        run: julia --project=. run.jl
+
+      # ─── 10. Verify results against reference test_data/ ─────────────────────
+      - name: Run test suite (test.jl)
+        working-directory: project_handout
+        run: julia --project=. test.jl
